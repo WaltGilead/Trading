@@ -1,6 +1,6 @@
 import yfinance as yf
 import pandas as pd
-import pandas_datareader.data as web
+# import pandas_datareader.data as web # Removed due to Python 3.12 incompatibility
 import logging
 from datetime import datetime, timedelta
 
@@ -134,26 +134,29 @@ class DataFetcher:
 
     def fetch_economic_data(self):
         """
-        Fetches key economic indicators from FRED.
+        Fetches key economic indicators.
+        Replaced pandas_datareader with yfinance proxies to avoid distutils error in Python 3.12+.
         """
-        series_ids = {
-            'CPI': 'CPIAUCSL',      # Consumer Price Index
-            'Unemployment': 'UNRATE', # Unemployment Rate
-            'FedFunds': 'FEDFUNDS'   # Federal Funds Rate
-        }
-        
         econ_data = {}
-        # Fetch last 2 years to ensure we have enough for YoY calcs
-        start_date = (datetime.now() - timedelta(days=730)).strftime('%Y-%m-%d')
         
-        for name, series_id in series_ids.items():
-            try:
-                logger.info(f"Fetching {name} from FRED...")
-                df = web.DataReader(series_id, 'fred', start_date)
-                econ_data[name] = df
-            except Exception as e:
-                logger.error(f"Error fetching {name} from FRED: {e}")
-                econ_data[name] = None
+        # 1. Interest Rates Proxy (13 Week Treasury Bill)
+        # We use ^IRX as a proxy for the Fed Funds Rate / Short term rates
+        try:
+            logger.info("Fetching Interest Rate Proxy (^IRX) from Yahoo Finance...")
+            ticker = yf.Ticker("^IRX")
+            # Fetch 2 years to match original logic's window, though we only need recent
+            hist = ticker.history(period="2y")
+            
+            if not hist.empty:
+                # Sentiment engine expects a DataFrame where .iloc[-1].values[0] is the value
+                # yfinance history 'Close' is the yield
+                econ_data['FedFunds'] = hist[['Close']]
+        except Exception as e:
+            logger.error(f"Error fetching rates proxy: {e}")
+
+        # Note: CPI and Unemployment are not easily available via yfinance without an API key.
+        # We omit them for now to ensure application stability on Streamlit Cloud.
+        # The sentiment engine handles missing data gracefully.
                 
         return econ_data
 
