@@ -20,7 +20,7 @@ class DataFetcher:
             # Market Indices & Commodities
             'BTC/USD': 'BTC-USD',
             'US30': '^DJI',
-            'US100': '^IXIC', 
+            'US100': '^NDX', 
             'XAU/USD': 'GC=F', 
             'VIX': '^VIX',
             'DXY': 'DX-Y.NYB' 
